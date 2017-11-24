@@ -1,7 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
-	xmlns:spring="http://www.springframework.org/schema/beans" version="EE-3.8.4"
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
-http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd"></mule>
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" basePath="/api" doc:name="HTTP Listener Configuration"/>
+    <http:request-config name="HTTP_Request_Configuration_GBG" host="192.168.1.48" port="5000" basePath="/api/v0.1" doc:name="HTTP Request Configuration">
+        <http:raml-api-configuration location="http://192.168.1.48:5000/raml"/>
+    </http:request-config>
+    <flow name="rasberrypikillersFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/GO" allowedMethods="GET" doc:name="HTTP"/>
+        <flow-ref name="GPG_Forward30" doc:name="GPG_Forward30"/>
+        <flow-ref name="GetDistanceLeft" doc:name="GetDistanceLeft"/>
+    </flow>
+    <sub-flow name="GPG_Forward30">
+        <http:request config-ref="HTTP_Request_Configuration_GBG" path="/robot/forward" method="PUT" doc:name="HTTP">
+            <http:request-builder>
+                <http:query-param paramName="distance" value="30"/>
+            </http:request-builder>
+        </http:request>
+    </sub-flow>
+    <sub-flow name="GetDistanceLeft">
+        <http:request config-ref="HTTP_Request_Configuration_GBG" path="/sensor/angle" method="PUT" doc:name="FaceLeft">
+            <http:request-builder>
+                <http:query-param paramName="degrees" value="270"/>
+            </http:request-builder>
+        </http:request>
+        <flow-ref name="GBG_GetDistance" doc:name="GBG_GetDistance"/>
+    </sub-flow>
+    <sub-flow name="GBG_GetDistance">
+        <http:request config-ref="HTTP_Request_Configuration_GBG" path="/sensor/distance" method="GET" doc:name="GetDistance"/>
+    </sub-flow>
+</mule>
