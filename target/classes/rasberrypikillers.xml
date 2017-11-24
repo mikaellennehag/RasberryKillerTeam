@@ -1,36 +1,174 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+<mule xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
 	xmlns:spring="http://www.springframework.org/schema/beans" 
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd">
     <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" basePath="/api" doc:name="HTTP Listener Configuration"/>
     <http:request-config name="HTTP_Request_Configuration_GBG" host="192.168.1.48" port="5000" basePath="/api/v0.1" doc:name="HTTP Request Configuration">
         <http:raml-api-configuration location="http://192.168.1.48:5000/raml"/>
     </http:request-config>
-    <flow name="rasberrypikillersFlow">
+    <flow name="rasberrypikillersFlow1">
         <http:listener config-ref="HTTP_Listener_Configuration" path="/GO" allowedMethods="GET" doc:name="HTTP"/>
-        <flow-ref name="GPG_Forward30" doc:name="GPG_Forward30"/>
-        <flow-ref name="GetDistanceLeft" doc:name="GetDistanceLeft"/>
+        <set-variable variableName="loopCounter" value="#[message.inboundProperties.'http.query.params'.counter]" doc:name=" SET loopCounter"/>
+        <flow-ref name="RunAgainLoop" doc:name="RunAgainLoop"/>
     </flow>
-    <sub-flow name="GPG_Forward30">
-        <http:request config-ref="HTTP_Request_Configuration_GBG" path="/robot/forward" method="PUT" doc:name="HTTP">
+    <sub-flow name="MainFlow">
+        <flow-ref name="GPG_Forward30" doc:name="GPG_Forward30"/>
+        <flow-ref name="GetDistanceAll" doc:name="GetDistanceAll"/>
+        <choice doc:name="Choice">
+            <when expression="#[flowVars.varLeftDistance &gt; 300 &amp;&amp; flowVars.varForwardDistance &lt; 400]">
+                <flow-ref name="MoveForwardTurnLeft" doc:name="MoveForwardTurnLeft"/>
+                <flow-ref name="GetDistanceAll" doc:name="Flow Reference"/>
+            </when>
+            <when expression="#[flowVars.varRightDistance &gt; 300 &amp;&amp; flowVars.varForwardDistance &lt; 400]">
+                <flow-ref name="MoveForwardTurnRight" doc:name="MoveForwardTurnRight"/>
+                <flow-ref name="GetDistanceAll" doc:name="GetDistanceAll"/>
+            </when>
+            <when expression="#[flowVars.varForwardDistance &lt; 300]">
+                <flow-ref name="GPG_Turn180" doc:name="GPG_Turn180"/>
+                <flow-ref name="GetDistanceAll" doc:name="GetDistanceAll"/>
+            </when>
+            <otherwise>
+                <flow-ref name="AdjustDirection" doc:name="AdjustDirection"/>
+            </otherwise>
+        </choice>
+    </sub-flow>
+    <flow name="RunAgainLoop">
+        <flow-ref name="MainFlow" doc:name="MainFlow"/>
+        <choice doc:name="Choice">
+            <when expression="#[flowVars.loopCounter &gt; 0]">
+                <set-variable variableName="loopCounter" value="#[flowVars.loopcounter - 1]" doc:name="Decrease loopCounter"/>
+                <set-variable variableName="varLeftDistanceHist" value="#[flowVars.varLeftDistance]" doc:name="Left Hist"/>
+                <set-variable variableName="varRightDistanceHist" value="#[flowVars.varRightDistance]" doc:name="Right Hist"/>
+                <set-variable variableName="varForwardDistanceHist" value="#[flowVars.varForwardDistance]" doc:name="Forward Hist"/>
+                <flow-ref name="RunAgainLoop" doc:name="RunAgainLoop"/>
+            </when>
+            <otherwise>
+                <logger message="Stopping loop" level="INFO" doc:name="Stop loop"/>
+            </otherwise>
+        </choice>
+    </flow>
+    <sub-flow name="MoveForwardTurnLeft">
+        <choice doc:name="Choice">
+            <when expression="#[(flowVars.varForwardDistance - 70) &lt; 0]">
+                <set-session-variable variableName="vDist" value="#[((70 - flowVars.varForwardDistance)/10).intValue()]" doc:name="Session Variable"/>
+                <flow-ref name="GPG_BackwardsXX" doc:name="GPG_BackwardsXX"/>
+            </when>
+            <otherwise>
+                <set-session-variable variableName="vDist" value="#[((flowVars.varForwardDistance - 70)/10).intValue()]" doc:name="Session Variable"/>
+                <flow-ref name="GPG_ForwardXX" doc:name="GPG_ForwardXX"/>
+            </otherwise>
+        </choice>
+        <flow-ref name="GPG_TurnLeft90" doc:name="GPG_TurnLeft90"/>
+    </sub-flow>
+    <sub-flow name="AdjustDirection">
+        <choice doc:name="Choice">
+            <when expression="#[flowVars.varLeftDistanceHist &lt; 300 &amp;&amp; (flowVars.varLeftDistance - flowVars.varLeftDistanceHist) &gt; 2 ]">
+                <flow-ref name="GPG_TurnLeft5" doc:name="GPG_TurnLeft5"/>
+            </when>
+            <when expression="#[flowVars.varRightDistanceHist &lt; 300 &amp;&amp; (flowVars.varRightDistance - flowVars.varRightDistanceHist) &gt; 2 ]">
+                <flow-ref name="GPG_TurnRight5" doc:name="GPG_TurnRight5"/>
+            </when>
+            <when expression="#[flowVars.varRightDistanceHist &lt; 300 &amp;&amp; (flowVars.varRightDistanceHist - flowVars.varRightDistance) &gt; 2 ]">
+                <flow-ref name="GPG_TurnLeft5" doc:name="GPG_TurnLeft5"/>
+            </when>
+            <when expression="#[flowVars.varLeftDistanceHist &lt; 300 &amp;&amp; (flowVars.varLeftDistanceHist - flowVars.varLeftDistance) &gt; 2 ]">
+                <flow-ref name="GPG_TurnRight5" doc:name="GPG_TurnRight5"/>
+            </when>
+            <otherwise>
+                <logger message="GOING STRAIGHT" level="INFO" doc:name="Logger"/>
+            </otherwise>
+        </choice>
+    </sub-flow>
+    <sub-flow name="MoveForwardTurnRight">
+        <choice doc:name="Choice">
+            <when expression="#[(flowVars.varForwardDistance - 70) &lt; 0]">
+                <set-session-variable variableName="vDist" value="#[((70 - flowVars.varForwardDistance)/10).intValue()]" doc:name="Session Variable"/>
+                <flow-ref name="GPG_BackwardsXX" doc:name="GPG_BackwardsXX"/>
+            </when>
+            <otherwise>
+                <set-session-variable variableName="vDist" value="#[((flowVars.varForwardDistance - 70)/10).intValue()]" doc:name="Session Variable"/>
+                <flow-ref name="GPG_ForwardXX" doc:name="GPG_ForwardXX"/>
+            </otherwise>
+        </choice>
+        <flow-ref name="GPG_TurnRight90" doc:name="GPG_TurnRight90"/>
+    </sub-flow>
+    <sub-flow name="GetDistanceAll">
+        <http:request config-ref="HTTP_Request_Configuration_GBG" path="/sensor/angle/reset" method="PUT" doc:name="Reset"/>
+        <flow-ref name="GetDistanceLeft" doc:name="GetDistanceLeft"/>
+        <flow-ref name="GetDistanceRight" doc:name="GetDistanceRight"/>
+        <flow-ref name="GetDistanceForward" doc:name="GetDistanceForward"/>
+
+        <logger message="Left: #[flowVars.varLeftDistance], Right: #[flowVars.varRightDistance], Forw: #[flowVars.varForwardDistance]" level="INFO" doc:name="Logger"/>
+    </sub-flow>
+    <sub-flow name="GetDistanceRight">
+        <http:request config-ref="HTTP_Request_Configuration_GBG" path="/sensor/angle" method="PUT" doc:name="FaceRight">
             <http:request-builder>
-                <http:query-param paramName="distance" value="30"/>
+                <http:query-param paramName="degrees" value="0"/>
             </http:request-builder>
         </http:request>
+        <flow-ref name="Sleep" doc:name="Sleep"/>
+        
+        <flow-ref name="GBG_GetDistance" doc:name="GBG_GetDistance"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+}]]></dw:set-payload>
+            <dw:set-variable variableName="varRightDistance"><![CDATA[%dw 1.0
+%output application/java
+---
+payload.distance]]></dw:set-variable>
+        </dw:transform-message>
     </sub-flow>
     <sub-flow name="GetDistanceLeft">
         <http:request config-ref="HTTP_Request_Configuration_GBG" path="/sensor/angle" method="PUT" doc:name="FaceLeft">
             <http:request-builder>
-                <http:query-param paramName="degrees" value="270"/>
+                <http:query-param paramName="degrees" value="180"/>
             </http:request-builder>
         </http:request>
+        <flow-ref name="Sleep" doc:name="Sleep"/>
         <flow-ref name="GBG_GetDistance" doc:name="GBG_GetDistance"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+}]]></dw:set-payload>
+            <dw:set-variable variableName="varLeftDistance"><![CDATA[%dw 1.0
+%output application/java
+---
+payload.distance]]></dw:set-variable>
+        </dw:transform-message>
     </sub-flow>
-    <sub-flow name="GBG_GetDistance">
-        <http:request config-ref="HTTP_Request_Configuration_GBG" path="/sensor/distance" method="GET" doc:name="GetDistance"/>
+        <sub-flow name="GetDistanceForward">
+        <http:request config-ref="HTTP_Request_Configuration_GBG" path="/sensor/angle/reset" method="PUT" doc:name="FaceForward">
+        </http:request>
+        <flow-ref name="Sleep" doc:name="Sleep"/>
+        <flow-ref name="GBG_GetDistance" doc:name="GBG_GetDistance"/>
+        <dw:transform-message doc:name="Transform Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+{
+}]]></dw:set-payload>
+            <dw:set-variable variableName="varForwardDistance"><![CDATA[%dw 1.0
+%output application/java
+---
+payload.distance]]></dw:set-variable>
+        </dw:transform-message>
     </sub-flow>
+    <sub-flow name="Sleep">
+        <expression-component doc:name="Sleep"><![CDATA[Thread.sleep(250);
+		]]></expression-component>
+    </sub-flow>
+    
 </mule>

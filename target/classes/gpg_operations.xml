@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd">
+    <sub-flow name="GPG_TurnRight90">
+            <http:request config-ref="HTTP_Request_Configuration_GBG" path="/robot/turn/right" method="PUT" doc:name="TurnRight"/>
+    </sub-flow>
+    <sub-flow name="GPG_TurnRight5">
+            <http:request config-ref="HTTP_Request_Configuration_GBG" path="/robot/turn" method="PUT" doc:name="TurnRight5">
+            <http:request-builder>
+                <http:query-param paramName="degrees" value="5"/>
+            </http:request-builder>
+        </http:request>
+    </sub-flow>
+    <sub-flow name="GPG_TurnLeft5">
+            <http:request config-ref="HTTP_Request_Configuration_GBG" path="/robot/turn" method="PUT" doc:name="TurnLeft5">
+            <http:request-builder>
+                <http:query-param paramName="degrees" value="-5"/>
+            </http:request-builder>
+        </http:request>
+    </sub-flow>
+    <sub-flow name="GPG_TurnLeft90">
+        <http:request config-ref="HTTP_Request_Configuration_GBG" path="/robot/turn/left" method="PUT" doc:name="TurnLeft"/>
+    </sub-flow>
+    <sub-flow name="GPG_Turn180">
+            <http:request config-ref="HTTP_Request_Configuration_GBG" path="/robot/turn" method="PUT" doc:name="TurnLeft">
+            <http:request-builder>
+                <http:query-param paramName="degrees" value="180"/>
+            </http:request-builder>
+        </http:request>
+    </sub-flow>
+    <sub-flow name="GPG_Forward30">
+        <http:request config-ref="HTTP_Request_Configuration_GBG" path="/robot/forward" method="PUT" doc:name="HTTP">
+            <http:request-builder>
+                <http:query-param paramName="distance" value="30"/>
+            </http:request-builder>
+        </http:request>
+    </sub-flow>
+    <sub-flow name="GPG_ForwardXX">
+        <http:request config-ref="HTTP_Request_Configuration_GBG" path="/robot/forward" method="PUT" doc:name="HTTP">
+            <http:request-builder>
+                <http:query-param paramName="distance" value="#[sessionVars.vDist]"/>
+            </http:request-builder>
+        </http:request>
+    </sub-flow>
+    <sub-flow name="GPG_BackwardsXX">
+        <http:request config-ref="HTTP_Request_Configuration_GBG" path="/robot/reverse" method="PUT" doc:name="HTTP">
+            <http:request-builder>
+                <http:query-param paramName="distance" value="#[sessionVars.vDist]"/>
+            </http:request-builder>
+        </http:request>
+    </sub-flow>
+    <sub-flow name="GBG_GetDistance">
+        <http:request config-ref="HTTP_Request_Configuration_GBG" path="/sensor/distance" method="GET" doc:name="GetDistance"/>
+    </sub-flow>
+</mule>
