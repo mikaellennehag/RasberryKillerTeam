@@ -41,6 +41,21 @@ http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/cor
             </http:request-builder>
         </http:request>
     </sub-flow>
+    <sub-flow name="GPG_Forward20">
+        <http:request config-ref="HTTP_Request_Configuration_GBG" path="/robot/forward" method="PUT" doc:name="HTTP">
+            <http:request-builder>
+                <http:query-param paramName="distance" value="20"/>
+            </http:request-builder>
+        </http:request>
+    </sub-flow>
+        <sub-flow name="GPG_Forward10">
+        <http:request config-ref="HTTP_Request_Configuration_GBG" path="/robot/forward" method="PUT" doc:name="HTTP">
+            <http:request-builder>
+                <http:query-param paramName="distance" value="10"/>
+            </http:request-builder>
+        </http:request>
+    </sub-flow>
+    
     <sub-flow name="GPG_ForwardXX">
         <http:request config-ref="HTTP_Request_Configuration_GBG" path="/robot/forward" method="PUT" doc:name="HTTP">
             <http:request-builder>

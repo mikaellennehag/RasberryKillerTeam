@@ -11,7 +11,7 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
 http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
 http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd">
     <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" basePath="/api" doc:name="HTTP Listener Configuration"/>
-    <http:request-config name="HTTP_Request_Configuration_GBG" host="192.168.1.48" port="5000" basePath="/api/v0.1" doc:name="HTTP Request Configuration">
+    <http:request-config name="HTTP_Request_Configuration_GBG" host="192.168.1.92" port="5000" basePath="/api/v0.1" doc:name="HTTP Request Configuration">
         <http:raml-api-configuration location="http://192.168.1.48:5000/raml"/>
     </http:request-config>
     <flow name="rasberrypikillersFlow1">
@@ -22,12 +22,13 @@ http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mul
     <sub-flow name="MainFlow">
         <flow-ref name="GPG_Forward30" doc:name="GPG_Forward30"/>
         <flow-ref name="GetDistanceAll" doc:name="GetDistanceAll"/>
+        <flow-ref name="AdjustDirection" doc:name="AdjustDirection"/>
         <choice doc:name="Choice">
             <when expression="#[flowVars.varLeftDistance &gt; 300 &amp;&amp; flowVars.varForwardDistance &lt; 400]">
                 <flow-ref name="MoveForwardTurnLeft" doc:name="MoveForwardTurnLeft"/>
-                <flow-ref name="GetDistanceAll" doc:name="Flow Reference"/>
+                <flow-ref name="GetDistanceAll" doc:name="GetDistanceAll"/>
             </when>
-            <when expression="#[flowVars.varRightDistance &gt; 300 &amp;&amp; flowVars.varForwardDistance &lt; 400]">
+            <when expression="#[flowVars.varRightDistance &gt; 350 &amp;&amp; flowVars.varForwardDistance &lt; 400]">
                 <flow-ref name="MoveForwardTurnRight" doc:name="MoveForwardTurnRight"/>
                 <flow-ref name="GetDistanceAll" doc:name="GetDistanceAll"/>
             </when>
@@ -36,7 +37,7 @@ http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mul
                 <flow-ref name="GetDistanceAll" doc:name="GetDistanceAll"/>
             </when>
             <otherwise>
-                <flow-ref name="AdjustDirection" doc:name="AdjustDirection"/>
+                <logger message="DO NOTHING" level="INFO" doc:name="Logger"/>
             </otherwise>
         </choice>
     </sub-flow>
@@ -55,6 +56,14 @@ http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mul
             </otherwise>
         </choice>
     </flow>
+    <sub-flow name="ShortcutLeft">
+        <flow-ref name="GPG_Forward10" doc:name="GPG_Forward10"/>
+        <flow-ref name="GPG_TurnLeft90" doc:name="GPG_TurnLeft90"/>
+    </sub-flow>
+    <sub-flow name="ShortcutRight">
+        <flow-ref name="GPG_Forward10" doc:name="GPG_Forward10"/>
+        <flow-ref name="GPG_TurnRight90" doc:name="GPG_TurnRight90"/>
+    </sub-flow>
     <sub-flow name="MoveForwardTurnLeft">
         <choice doc:name="Choice">
             <when expression="#[(flowVars.varForwardDistance - 70) &lt; 0]">
@@ -70,16 +79,16 @@ http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mul
     </sub-flow>
     <sub-flow name="AdjustDirection">
         <choice doc:name="Choice">
-            <when expression="#[flowVars.varLeftDistanceHist &lt; 300 &amp;&amp; (flowVars.varLeftDistance - flowVars.varLeftDistanceHist) &gt; 2 ]">
+            <when expression="#[flowVars.varLeftDistanceHist &lt; 300 &amp;&amp; (flowVars.varLeftDistance - flowVars.varLeftDistanceHist) &gt; 20 ]">
                 <flow-ref name="GPG_TurnLeft5" doc:name="GPG_TurnLeft5"/>
             </when>
-            <when expression="#[flowVars.varRightDistanceHist &lt; 300 &amp;&amp; (flowVars.varRightDistance - flowVars.varRightDistanceHist) &gt; 2 ]">
+            <when expression="#[flowVars.varRightDistanceHist &lt; 300 &amp;&amp; (flowVars.varRightDistance - flowVars.varRightDistanceHist) &gt; 20 ]">
                 <flow-ref name="GPG_TurnRight5" doc:name="GPG_TurnRight5"/>
             </when>
-            <when expression="#[flowVars.varRightDistanceHist &lt; 300 &amp;&amp; (flowVars.varRightDistanceHist - flowVars.varRightDistance) &gt; 2 ]">
+            <when expression="#[flowVars.varRightDistanceHist &lt; 300 &amp;&amp; (flowVars.varRightDistanceHist - flowVars.varRightDistance) &gt; 20 ]">
                 <flow-ref name="GPG_TurnLeft5" doc:name="GPG_TurnLeft5"/>
             </when>
-            <when expression="#[flowVars.varLeftDistanceHist &lt; 300 &amp;&amp; (flowVars.varLeftDistanceHist - flowVars.varLeftDistance) &gt; 2 ]">
+            <when expression="#[flowVars.varLeftDistanceHist &lt; 300 &amp;&amp; (flowVars.varLeftDistanceHist - flowVars.varLeftDistance) &gt; 20 ]">
                 <flow-ref name="GPG_TurnRight5" doc:name="GPG_TurnRight5"/>
             </when>
             <otherwise>
@@ -167,7 +176,7 @@ payload.distance]]></dw:set-variable>
         </dw:transform-message>
     </sub-flow>
     <sub-flow name="Sleep">
-        <expression-component doc:name="Sleep"><![CDATA[Thread.sleep(250);
+        <expression-component doc:name="Sleep"><![CDATA[Thread.sleep(150);
 		]]></expression-component>
     </sub-flow>
     
